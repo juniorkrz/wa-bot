@@ -1,8 +1,7 @@
-import { WASocket, areJidsSameUser, isJidGroup, proto } from '@whiskeysockets/baileys'
+import { WASocket, proto } from '@whiskeysockets/baileys'
 import { getCommand } from '../core/registry.js'
 import { botConfig } from '../config/bot.js'
-import { amAdminOfGroup, getPhoneFromJid } from '../helpers/baileys.js'
-import { createContextHelpers } from '../helpers/context.js'
+import { createContextHelpers, getExtraContext } from '../helpers/context.js'
 
 export async function handleMessage(
     sock: WASocket,
@@ -16,38 +15,6 @@ export async function handleMessage(
     // Get the jid of the chat
     const jid = key.remoteJid
     if (!jid) return
-
-    // Get the sender of the message
-    const sender = key.participant
-        ? key.participant
-        : jid
-    // Is this a Group?
-    const isGroup = isJidGroup(jid)
-    // If so, get the group
-    const group = isGroup
-        ? await sock.groupMetadata(jid)//await getFullCachedGroupMetadata(jid)// TODO: Use cache
-        : undefined
-    // Get the sender phone
-    const phone = getPhoneFromJid(sender)
-    // Is the sender an bot admin?
-    const isBotAdmin = botConfig.admins.includes(phone)
-    // Is the sender an admin of the group?
-    const isGroupAdmin = group
-        ? group.participants
-            .find((p) => areJidsSameUser(p.id, sender))
-            ?.admin?.endsWith('admin') !== undefined
-        : false
-    // Is the Bot an admin of the group?
-    const amAdmin = amAdminOfGroup(group)
-    // Is sender banned?
-    const isBanned = phone
-        ? false//await isUserBanned(phone)// TODO: Implement bans
-        : false
-    // Is sender VIP?
-    const isVip = false//await senderIsVip(sender)// TODO: Implement bans
-
-    // Message timestamp
-    const timestamp = Date.now()
 
     const text =
         message.message.conversation ||
@@ -82,32 +49,22 @@ export async function handleMessage(
         message
     })
 
+    const extraContext = await getExtraContext(sock, key, jid)
+
     const ctx = {
         sock,
         jid,
         message,
         args,
 
-        sender,
-        phone,
-
-        isGroup,
-        group,
-
-        isBotAdmin,
-        isGroupAdmin,
-        amAdmin,
-        isBanned,
-        isVip,
+        ...extraContext,
 
         ...helpers,
 
         prefix,
         body,
-        command: commandName,
-        timestamp
+        command: commandName
     }
-
 
     try {
         await command.execute(ctx)

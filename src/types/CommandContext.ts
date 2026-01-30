@@ -1,4 +1,4 @@
-import type { WASocket, proto, GroupMetadata, AnyMessageContent, MiscMessageGenerationOptions } from '@whiskeysockets/baileys'
+import type { WASocket, proto, GroupMetadata, AnyMessageContent } from '@whiskeysockets/baileys'
 
 export interface CommandContext {
   // Core
