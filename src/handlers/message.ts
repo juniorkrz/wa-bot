@@ -1,38 +1,156 @@
-import { WASocket, proto } from '@whiskeysockets/baileys'
+import { AnyMessageContent, WAMessage, WASocket, areJidsSameUser, isJidGroup, proto } from '@whiskeysockets/baileys'
 import { getCommand } from '../core/registry.js'
-
-const PREFIX = '!'
+import { botConfig } from '../config/bot.js'
+import { amAdminOfGroup, getPhoneFromJid } from '../helpers/baileys.js'
+import { CommandContext } from '../types/CommandContext.js'
 
 export async function handleMessage(
     sock: WASocket,
     message: proto.IWebMessageInfo
 ) {
-    if (!message.message || message.key?.fromMe) return
+    if (!message.message) return
+
+    const key = message.key
+    if (!key || key.fromMe) return
+
+    // Get the jid of the chat
+    const jid = key.remoteJid
+    if (!jid) return
+
+    // Get the sender of the message
+    const sender = key.participant
+        ? key.participant
+        : jid
+    // Is this a Group?
+    const isGroup = isJidGroup(jid)
+    // If so, get the group
+    const group = isGroup
+        ? await sock.groupMetadata(jid)//await getFullCachedGroupMetadata(jid)// TODO: Use cache
+        : undefined
+    // Get the sender phone
+    const phone = getPhoneFromJid(sender)
+    // Is the sender an bot admin?
+    const isBotAdmin = botConfig.admins.includes(phone)
+    // Is the sender an admin of the group?
+    const isGroupAdmin = group
+        ? group.participants
+            .find((p) => areJidsSameUser(p.id, sender))
+            ?.admin?.endsWith('admin') !== undefined
+        : false
+    // Is the Bot an admin of the group?
+    const amAdmin = amAdminOfGroup(group)
+    // Is sender banned?
+    const isBanned = phone
+        ? false//await isUserBanned(phone)// TODO: Implement bans
+        : false
+    // Is sender VIP?
+    const isVip = false//await senderIsVip(sender)// TODO: Implement bans
+
+    // Message timestamp
+    const timestamp = Date.now()
 
     const text =
         message.message.conversation ||
         message.message.extendedTextMessage?.text
 
-    if (!text?.startsWith(PREFIX)) return
+    if (!text) return
 
-    const [name, ...args] = text
-        .slice(PREFIX.length)
+    const prefix = botConfig.prefixes.find(p =>
+        text.startsWith(p)
+    )
+
+    if (!prefix) return
+
+    // body
+    const body = text
+        .slice(prefix.length)
+        .trim()
+
+    const [commandName, ...args] = text
+        .slice(prefix.length)
         .trim()
         .split(/\s+/)
 
-    const command = getCommand(name)
+    if (!commandName) return
+
+    const command = getCommand(commandName.toLowerCase())
     if (!command) return
 
-    const jid = message.key?.remoteJid
-    if (!jid) return
+    const sendMessage: CommandContext['sendMessage'] = async (
+        content,
+        options
+    ) => {
+        const msg: AnyMessageContent =
+            typeof content === 'string'
+                ? { text: content }
+                : content
+
+        await sock.sendMessage(
+            jid,
+            msg,
+            options
+        )
+    }
+
+    const reply: CommandContext['reply'] = async (
+        content,
+        options
+    ) => {
+        const msg: AnyMessageContent =
+            typeof content === 'string'
+                ? { text: content }
+                : content
+
+        await sock.sendMessage(
+            jid,
+            msg,
+            options
+                ? options
+                : { quoted: message as WAMessage }
+        )
+    }
+
+    const react: CommandContext['react'] = async (emoji) => {
+        await sock.sendMessage(jid, {
+            react: {
+                text: emoji,
+                key: message.key
+            }
+        })
+    }
+
+    const ctx = {
+        sock,
+        jid,
+        message,
+        args,
+
+        sender,
+        phone,
+
+        isGroup,
+        group,
+
+        isBotAdmin,
+        isGroupAdmin,
+        amAdmin,
+        isBanned,
+        isVip,
+
+        sendMessage,
+        reply,
+        react,
+
+        prefix,
+        body,
+        command: commandName,
+        timestamp
+    }
+
 
     try {
-        await command.execute({
-            sock,
-            jid,
-            message,
-            args
-        })
+        await command.execute(ctx)
+
     } catch (err) {
         console.error(err)
         await sock.sendMessage(jid, {

@@ -7,5 +7,7 @@ function parsePrefixes(value?: string): string[] {
 }
 
 export const botConfig = {
-  prefixes: parsePrefixes(process.env.BOT_PREFIXES)
+  prefixes: parsePrefixes(process.env.BOT_PREFIXES),
+  admins: parsePrefixes(process.env.BOT_ADMINS),
+  name: process.env.BOT_NAME || 'StickerBot'
 }

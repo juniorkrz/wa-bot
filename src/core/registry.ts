@@ -1,10 +1,12 @@
 import ping from '../commands/ping.js'
 import help from '../commands/help.js'
-import { Command } from '../types/command.js'
+import quote from '../commands/quoted.js'
+import { Command } from '../types/Command.js'
 
 const commands: Command[] = [
   ping,
-  help
+  help,
+  quote
 ]
 
 export function getCommand(name: string): Command | undefined {
