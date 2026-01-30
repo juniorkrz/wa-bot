@@ -1,4 +1,4 @@
-import { GroupMetadata, jidNormalizedUser, proto } from '@whiskeysockets/baileys'
+import { GroupMetadata, jidNormalizedUser, proto, WAMessage } from '@whiskeysockets/baileys'
 import { getSocket } from '../bot.js'
 
 export function getQuotedMessage(
@@ -26,4 +26,12 @@ export const amAdminOfGroup = (group?: GroupMetadata): boolean => {
   )
 
   return me?.admin === 'admin' || me?.admin === 'superadmin'
+}
+
+export const toQuotedMessage = (
+  message: proto.IWebMessageInfo
+): WAMessage | undefined => {
+  if (!message.key) return undefined
+
+  return message as WAMessage
 }

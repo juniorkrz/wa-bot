@@ -23,14 +23,9 @@ export interface CommandContext {
   isVip: boolean
 
   // Utils
-  sendMessage: (
-    content: string | AnyMessageContent,
-    options?: MiscMessageGenerationOptions
-  ) => Promise<void>
-
   reply: (
     content: string | AnyMessageContent,
-    options?: MiscMessageGenerationOptions
+    options?: { quoted?: boolean }
   ) => Promise<void>
 
   react: (emoji: string) => Promise<void>

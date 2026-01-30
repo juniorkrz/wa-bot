@@ -20,7 +20,7 @@ const ping: Command = {
 
         const reply = spintax(text)
 
-        await ctx.reply(reply)
+        await ctx.reply(reply, { quoted: true })
         await ctx.react(getRandomItemFromArray(emojis.ping))
     }
 }

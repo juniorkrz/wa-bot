@@ -1,8 +1,8 @@
-import { AnyMessageContent, WAMessage, WASocket, areJidsSameUser, isJidGroup, proto } from '@whiskeysockets/baileys'
+import { WASocket, areJidsSameUser, isJidGroup, proto } from '@whiskeysockets/baileys'
 import { getCommand } from '../core/registry.js'
 import { botConfig } from '../config/bot.js'
 import { amAdminOfGroup, getPhoneFromJid } from '../helpers/baileys.js'
-import { CommandContext } from '../types/CommandContext.js'
+import { createContextHelpers } from '../helpers/context.js'
 
 export async function handleMessage(
     sock: WASocket,
@@ -76,48 +76,11 @@ export async function handleMessage(
     const command = getCommand(commandName.toLowerCase())
     if (!command) return
 
-    const sendMessage: CommandContext['sendMessage'] = async (
-        content,
-        options
-    ) => {
-        const msg: AnyMessageContent =
-            typeof content === 'string'
-                ? { text: content }
-                : content
-
-        await sock.sendMessage(
-            jid,
-            msg,
-            options
-        )
-    }
-
-    const reply: CommandContext['reply'] = async (
-        content,
-        options
-    ) => {
-        const msg: AnyMessageContent =
-            typeof content === 'string'
-                ? { text: content }
-                : content
-
-        await sock.sendMessage(
-            jid,
-            msg,
-            options
-                ? options
-                : { quoted: message as WAMessage }
-        )
-    }
-
-    const react: CommandContext['react'] = async (emoji) => {
-        await sock.sendMessage(jid, {
-            react: {
-                text: emoji,
-                key: message.key
-            }
-        })
-    }
+    const helpers = createContextHelpers({
+        sock,
+        jid,
+        message
+    })
 
     const ctx = {
         sock,
@@ -137,9 +100,7 @@ export async function handleMessage(
         isBanned,
         isVip,
 
-        sendMessage,
-        reply,
-        react,
+        ...helpers,
 
         prefix,
         body,
