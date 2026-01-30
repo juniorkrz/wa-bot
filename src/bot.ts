@@ -7,11 +7,16 @@ import { Boom } from '@hapi/boom'
 import { loadAuthState } from './config/auth.js'
 import { handleMessage } from './handlers/message.js'
 
+let sock: ReturnType<typeof makeWASocket>
+
+export const getSocket = () => {
+  return sock
+}
 
 export async function startBot() {
   const { state, saveCreds } = await loadAuthState()
 
-  const sock = makeWASocket({
+  sock = makeWASocket({
     auth: state
   })
 
@@ -40,6 +45,16 @@ export async function startBot() {
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
     for (const msg of messages) {
+      // This is where the fun begins!
+
+      // Do nothing if self, if no message, no remoteJid, Broadcast, Reaction
+      if (
+        msg.key.fromMe ||
+        !msg.message ||
+        !msg.key.remoteJid ||
+        msg.key.remoteJid === 'status@broadcast'
+      )
+        continue
       await handleMessage(sock, msg)
     }
   })
